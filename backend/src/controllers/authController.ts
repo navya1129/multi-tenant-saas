@@ -11,7 +11,6 @@ const PLAN_DEFAULTS: Record<string, { maxUsers: number; maxProjects: number }> =
   pro: { maxUsers: 25, maxProjects: 15 },
   enterprise: { maxUsers: 100, maxProjects: 50 }
 };
-
 const registerTenantSchema = z.object({
   tenantName: z.string().min(1),
   subdomain: z.string().min(1).regex(/^[a-z0-9-]+$/i),

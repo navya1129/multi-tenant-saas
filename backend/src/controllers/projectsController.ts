@@ -52,6 +52,7 @@ export async function createProject(req: AuthRequest, res: Response) {
   }
 }
 
+
 export async function listProjects(req: AuthRequest, res: Response) {
   const tenantId = req.params.tenantId;
   try {
