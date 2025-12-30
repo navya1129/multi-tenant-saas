@@ -51,7 +51,6 @@ async function main() {
       }
     });
   }
-
   // Regular users
   const userHash = await bcryptjs.hash('User@123', 10);
   let user1 = await prisma.user.findFirst({ where: { email: 'user1@demo.com', tenantId: demoTenant.id } });
