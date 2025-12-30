@@ -1,3 +1,4 @@
+
 # Enterprise Multi-Tenant Task Management Platform
 
 An enterprise-ready, scalable multi-tenant solution built to manage projects and tasks efficiently across organizations. Developed using modern technologies such as **Node.js**, **Express**, **React**, and **PostgreSQL**, and fully containerized with **Docker** for smooth deployment and portability.
@@ -262,5 +263,4 @@ React, Vite, Express.js, TypeScript, Node.js, PostgreSQL, Prisma, JWT, bcryptjs,
 
 ---
 
-Author : Krishna Tulasi Satti
-
+Krishna Tulasi Satti

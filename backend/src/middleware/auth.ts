@@ -9,7 +9,6 @@ export interface TokenPayload {
   role: 'super_admin' | 'tenant_admin' | 'user' | string;
 }
 
-
 export interface AuthRequest extends Request {
   user?: User | null;
   tenant?: Tenant | null;

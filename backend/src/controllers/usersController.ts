@@ -13,7 +13,6 @@ const createUserSchema = z.object({
   role: z.enum(['user', 'tenant_admin']).optional()
 });
 
-
 export async function addUser(req: AuthRequest, res: Response) {
   const tenantId = req.params.tenantId;
 

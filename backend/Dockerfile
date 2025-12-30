@@ -36,7 +36,6 @@ COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 RUN chown -R app:app /app && chmod +x ./entrypoint.sh
 USER app
 
-
 EXPOSE 5000
 ENV NODE_ENV=production
 CMD ["./entrypoint.sh"]

@@ -1,139 +1,60 @@
-
 # Platform Technical Architecture
 
-## Technology Stack Overview
+## Technology Stack
+- Application Layer: Node.js 18.x, Express framework, TypeScript, Prisma ORM, Zod validation, JWT auth, bcryptjs encryption.
+- Client Layer: React 18.x, Vite build tool, React Router, fetch-based API integration.
+- Data Layer: PostgreSQL 15.x.
+- Containerization: Docker Engine + Docker Compose orchestration.
 
-- **Application Layer:** Built using Node.js 18.x with the Express framework and TypeScript. Prisma ORM handles database access, Zod is used for input validation, JWT manages authentication, and bcryptjs secures password hashing.
-- **Client Layer:** Developed with React 18.x and bundled using Vite. React Router manages navigation, and API communication is handled through fetch-based services.
-- **Data Layer:** PostgreSQL 15.x serves as the primary relational database.
-- **Containerization:** Docker Engine and Docker Compose orchestrate all services for consistent environments.
+## Repository Structure (primary paths)
+- backend/
+	- src/index.ts (Express application initialization)
+	- src/controllers/*.ts (authentication, tenants, users, projects, tasks)
+	- src/middleware/auth.ts (JWT verification + RBAC enforcement)
+	- src/routes/*.ts (endpoint routing)
+	- src/utils/{jwt,audit}.ts (utilities)
+	- src/prisma.ts (ORM client)
+	- prisma/schema.prisma, prisma/seed.js (schema and data)
+- frontend/
+	- src/main.jsx, src/App.jsx (routing configuration)
+	- src/context/AuthContext.jsx (authentication state)
+	- src/components/ProtectedRoute.jsx (route guards)
+	- src/services/api.js (API client)
+	- src/pages/*.jsx (Authentication, Registration, Dashboard, Users, Projects, Tasks)
+- docs/ (API reference, PRD, research, architecture, specifications)
+- docker-compose.yml (service orchestration: db, backend, frontend)
+- integration-test.js (end-to-end API validation)
 
----
+## Configuration Variables
+- Backend environment (.env):
+	- DATABASE_URL=postgresql://postgres:postgres@database:5432/saas_db
+	- JWT_SECRET=<cryptographically-secure-32+char-string>
+	- JWT_EXPIRES_IN=24h
+	- PORT=5000
+	- FRONTEND_URL=http://frontend:3000
+- Frontend environment:
+	- VITE_API_URL=http://backend:5000/api
 
-## Repository Structure (Key Directories)
+## Local Development (non-containerized)
+1) Launch PostgreSQL (port 5432) and configure DATABASE_URL.
+2) Backend: `cd backend && npm install && npx prisma migrate deploy && npx prisma db seed && npm run dev`.
+3) Frontend: `cd frontend && npm install && npm run dev` (references VITE_API_URL).
 
-```
-backend/
- ├── src/
- │   ├── index.ts              # Express app bootstrap
- │   ├── controllers/          # Auth, tenants, users, projects, tasks
- │   ├── middleware/auth.ts    # JWT validation & RBAC logic
- │   ├── routes/               # API route definitions
- │   ├── utils/                # JWT & audit utilities
- │   ├── prisma.ts             # Prisma client instance
- ├── prisma/
- │   ├── schema.prisma         # Database schema
- │   └── seed.js               # Seed data
-frontend/
- ├── src/
- │   ├── main.jsx              # Application entry point
- │   ├── App.jsx               # Route configuration
- │   ├── context/              # Authentication context
- │   ├── components/           # Protected routes
- │   ├── services/api.js       # API client
- │   └── pages/                # Auth, dashboard, users, projects, tasks
-docs/                           # API docs, PRD, research, architecture
-docker-compose.yml              # Service orchestration
-integration-test.js             # End-to-end API tests
-```
-
----
-
-## Configuration Settings
-
-### Backend Environment Variables
-```
-DATABASE_URL=postgresql://postgres:postgres@database:5432/saas_db
-JWT_SECRET=<secure-32+character-secret>
-JWT_EXPIRES_IN=24h
-PORT=5000
-FRONTEND_URL=http://frontend:3000
-```
-
-### Frontend Environment Variables
-```
-VITE_API_URL=http://backend:5000/api
-```
-
----
-
-## Local Development (Without Docker)
-
-1. Start a PostgreSQL instance on port 5432 and configure the `DATABASE_URL`.
-2. Launch the backend:
-   ```bash
-   cd backend
-   npm install
-   npx prisma migrate deploy
-   npx prisma db seed
-   npm run dev
-   ```
-3. Start the frontend:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-   Ensure `VITE_API_URL` points to the backend.
-
----
-
-## Containerized Execution
-
-1. Start all services:
-   ```bash
-   docker-compose up -d
-   ```
-2. Confirm service health:
-   - Backend: `/api/health`
-   - Frontend: `http://localhost:3000`
-3. Stop services:
-   ```bash
-   docker-compose down
-   ```
-   Use `-v` to remove persistent volumes.
-
----
+## Container Orchestration
+1) `docker-compose up -d`
+2) Verify health: backend endpoint /api/health, frontend port :3000.
+3) Shutdown: `docker-compose down` (append `-v` to purge volumes).
 
 ## Quality Assurance
-
-- **Integration Testing:**  
-  Run `node integration-test.js` from the project root while services are active.
-
-- **Backend Unit Tests:**  
-  ```bash
-  cd backend
-  npm test
-  ```
-
----
+- Integration testing: execute `node integration-test.js` from root (requires active services).
+- Unit testing (backend): `cd backend && npm test`.
 
 ## API Architecture Notes
-
-- Authentication endpoints include tenant registration, login, profile access, and logout.
-- RBAC is enforced via middleware, with tenant-level filtering on all data operations.
-- Platform administrators operate without tenant binding (`tenantId = null`).
-- API responses follow a consistent structure:
-  ```json
-  { "success": true, "message": "...", "data": {} }
-  ```
-
----
+- Authentication routes: /api/auth/register-tenant, /login, /me, /logout.
+- RBAC via middleware; tenant filtering on data endpoints; platform admin operates with tenantId=null.
+- Uniform response structure: { success, message?, data? } with semantic HTTP codes.
 
 ## Production Deployment Considerations
-
-- Inject environment variables securely and use a strong JWT secret.
-- Enable HTTPS/TLS and restrict CORS to approved origins.
-- Apply database migrations during deployment using:
-  ```bash
-  npx prisma migrate deploy
-  ```
-- Build the frontend for production:
-  ```bash
-  npm run build
-  ```
-  Static assets are served via the configured Dockerfile.
-
----
-
-This technical architecture provides a scalable, secure, and maintainable foundation for deploying and operating the multi-tenant SaaS platform in both development and production environments.
+- Secure environment variable injection; strong JWT_SECRET; TLS/HTTPS enablement; CORS allowlist.
+- Schema migrations on deployment: `npx prisma migrate deploy`.
+- Client build process: `npm run build` (frontend) with static asset serving (Dockerfile configured).

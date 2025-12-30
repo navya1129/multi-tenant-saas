@@ -12,7 +12,6 @@ const updateTenantSchema = z.object({
   maxProjects: z.number().int().positive().optional()
 });
 
-
 const listQuerySchema = z.object({
   page: z.preprocess((v) => parseInt(String(v || '1')), z.number().int().positive()).optional(),
   limit: z.preprocess((v) => Math.min(100, Math.max(1, parseInt(String(v || '10')))), z.number().int().positive()).optional(),
