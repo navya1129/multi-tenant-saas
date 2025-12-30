@@ -1,0 +1,24 @@
+### Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+### Build outputs
+dist/
+build/
+*.log
+coverage/
+
+### Env & local
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.local
+*.cache
+
+### Editor
+.vscode/
+*.swp
+*.swo
