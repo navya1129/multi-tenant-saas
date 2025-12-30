@@ -14,13 +14,18 @@ export function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', projectId, priority: 'medium', status: 'todo' });
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    projectId,
+    priority: 'medium',
+    status: 'todo'
+  });
   const [submitError, setSubmitError] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || '');
   const [hasUserSelectedProject, setHasUserSelectedProject] = useState(false);
 
   useEffect(() => {
-    // Only fetch data after auth is done loading, we have token, user, and either user has tenantId or super admin has selected one
     if (!authLoading) {
       const effectiveTenantId = user?.tenantId || selectedTenantId;
       if (token && user && effectiveTenantId) {
@@ -30,7 +35,7 @@ export function TasksPage() {
         setError('Not authenticated');
       } else if (token && user && !effectiveTenantId) {
         setLoading(false);
-        setError('Please select a tenant to manage tasks (Dashboard > Select Tenant)');
+        setError('Please select a tenant to manage tasks');
       }
     }
   }, [authLoading, token, user, selectedTenantId, selectedProjectId]);
@@ -38,50 +43,42 @@ export function TasksPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      setError(''); // Clear error before fetching
+      setError('');
       const effectiveTenantId = user?.tenantId || selectedTenantId;
+
       const projectsList = await apiService.listProjects(token, effectiveTenantId);
-      // Response structure: { projects: [...], total, pagination } OR just array for legacy
-      const projectsData = Array.isArray(projectsList) ? projectsList : (projectsList.projects || []);
+      const projectsData = Array.isArray(projectsList)
+        ? projectsList
+        : (projectsList.projects || []);
       setProjects(projectsData);
-      
-      // Auto-select first project only on initial load for super admin (if user hasn't manually selected)
+
       let projectToLoad = selectedProjectId;
       if (!projectToLoad && projectsData.length > 0 && user?.role === 'super_admin' && !hasUserSelectedProject) {
         projectToLoad = projectsData[0].id;
-        setSelectedProjectId(projectsData[0].id);
+        setSelectedProjectId(projectToLoad);
         setHasUserSelectedProject(true);
       }
-      
-      // Fetch tasks - either from a specific project or from all projects
+
       if (projectToLoad) {
-        // Fetch tasks from specific project
         const tasksList = await apiService.listTasks(token, projectToLoad);
-        // Response structure: { tasks: [...], total, pagination } OR just array for legacy
         const tasksData = Array.isArray(tasksList) ? tasksList : (tasksList.tasks || []);
         setTasks(tasksData);
-      } else if (projectsData.length > 0) {
-        // Fetch tasks from all projects when "All Projects" is selected
+      } else {
         const allTasks = [];
-        for (const project of projectsData) {
+        for (const p of projectsData) {
           try {
-            const tasksList = await apiService.listTasks(token, project.id);
+            const tasksList = await apiService.listTasks(token, p.id);
             const tasksData = Array.isArray(tasksList) ? tasksList : (tasksList.tasks || []);
             allTasks.push(...tasksData);
-          } catch (err) {
-            console.log('Failed to fetch tasks for project', project.id);
-          }
+          } catch {}
         }
-        // Sort all tasks by creation date (newest first)
         allTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setTasks(allTasks);
-      } else {
-        setTasks([]);
       }
     } catch (err) {
-      setError('Failed to load data: ' + (err.message || 'Unknown error'));
-      setProjects([]);
+      setError('Failed to load data');
       setTasks([]);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -95,11 +92,23 @@ export function TasksPage() {
         setSubmitError('Please select a project');
         return;
       }
-      await apiService.createTask(token, formData.title, formData.description, formData.projectId, formData.priority, formData.status);
-      setFormData({ title: '', description: '', projectId: selectedProjectId, priority: 'medium', status: 'todo' });
+      await apiService.createTask(
+        token,
+        formData.title,
+        formData.description,
+        formData.projectId,
+        formData.priority,
+        formData.status
+      );
+      setFormData({
+        title: '',
+        description: '',
+        projectId: selectedProjectId,
+        priority: 'medium',
+        status: 'todo'
+      });
       setShowForm(false);
-      // Refresh data to show the new task
-      await fetchData();
+      fetchData();
     } catch (err) {
       setSubmitError(err.message || 'Failed to create task');
     }
@@ -109,137 +118,299 @@ export function TasksPage() {
     if (!window.confirm('Are you sure?')) return;
     try {
       await apiService.deleteTask(token, taskId);
-      // Refresh data to remove the deleted task
-      await fetchData();
-    } catch (err) {
-      alert('Failed to delete task: ' + err.message);
+      fetchData();
+    } catch {
+      alert('Failed to delete task');
     }
   };
 
   const handleUpdateStatus = async (taskId, status) => {
     try {
       const task = tasks.find((t) => t.id === taskId);
-      await apiService.updateTask(token, taskId, task.title, task.description, status, task.priority);
-      // Refresh data to show the updated status
-      await fetchData();
-    } catch (err) {
-      alert('Failed to update task: ' + err.message);
+      await apiService.updateTask(
+        token,
+        taskId,
+        task.title,
+        task.description,
+        status,
+        task.priority
+      );
+      fetchData();
+    } catch {
+      alert('Failed to update task');
     }
   };
 
   return (
-    <div className="page">
-      <nav className="topbar">
+    <div style={page}>
+      {/* Topbar */}
+      <nav style={topbar}>
         <h1>{user?.role === 'super_admin' ? 'View Tasks' : 'Tasks'}</h1>
         <div>
-          <button onClick={() => navigate('/dashboard')} className="btn btn-secondary" style={{ marginRight: 10 }}>Dashboard</button>
-          <button onClick={() => { logout(); navigate('/login'); }} className="btn btn-secondary">Logout</button>
+          <button onClick={() => navigate('/dashboard')} style={btnSecondary}>Dashboard</button>
+          <button onClick={() => { logout(); navigate('/login'); }} style={btnSecondary}>Logout</button>
         </div>
       </nav>
 
-      <div className="card" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <label style={{ fontWeight: 700 }}>Filter by Project:</label>
-        <select value={selectedProjectId} onChange={(e) => { 
-          setSelectedProjectId(e.target.value);
-          setHasUserSelectedProject(true);
-        }} className="input" style={{ width: '240px' }}>
+      {/* Filter */}
+      <div style={filterCard}>
+        <label style={{ fontWeight: 700 }}>Filter by Project</label>
+        <select
+          style={input}
+          value={selectedProjectId}
+          onChange={(e) => {
+            setSelectedProjectId(e.target.value);
+            setHasUserSelectedProject(true);
+          }}
+        >
           <option value="">All Projects</option>
-          {projects.map((p) => (
+          {projects.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
       </div>
 
-      {user?.role === 'super_admin' && <div className="alert" style={{ color: '#065f46', borderColor: '#86efac', background: '#f0fdf4' }}>📊 Read-only view - Super Admin cannot modify tasks</div>}
+      {user?.role === 'super_admin' && (
+        <div style={infoAlert}>
+          📊 Read-only view — Super Admin cannot modify tasks
+        </div>
+      )}
+
+      {!showForm && user?.role !== 'super_admin' && (
+        <button onClick={() => setShowForm(true)} style={{ ...btnPrimary, marginBottom: 20 }}>
+          + Create Task
+        </button>
+      )}
 
       {user?.role !== 'super_admin' && showForm && (
-        <form onSubmit={handleCreateTask} className="card" style={{ marginBottom: 20 }}>
-          {submitError && <div className="alert error">{submitError}</div>}
-          <div className="form-group">
-            <label>Project</label>
-            <select className="input" value={formData.projectId} onChange={(e) => setFormData({ ...formData, projectId: e.target.value })} required>
-              <option value="">Select a project</option>
-              {projects.map((p) => (
+        <form onSubmit={handleCreateTask} style={card}>
+          {submitError && <div style={errorAlert}>{submitError}</div>}
+
+          <div style={formGroup}>
+            <label style={label}>Project</label>
+            <select
+              style={input}
+              value={formData.projectId}
+              onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+            >
+              <option value="">Select project</option>
+              {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           </div>
-          <div className="form-group">
-            <label>Task Title</label>
-            <input className="input" type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
+
+          <div style={formGroup}>
+            <label style={label}>Title</label>
+            <input
+              style={input}
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+            />
           </div>
-          <div className="form-group">
-            <label>Description</label>
-            <textarea className="input" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} style={{ minHeight: 60 }} />
+
+          <div style={formGroup}>
+            <label style={label}>Description</label>
+            <textarea
+              style={{ ...input, minHeight: 70 }}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
           </div>
-          <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="form-group">
-              <label>Priority</label>
-              <select className="input" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
+
+          <div style={twoCol}>
+            <div>
+              <label style={label}>Priority</label>
+              <select
+                style={input}
+                value={formData.priority}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+              >
                 <option>low</option>
                 <option>medium</option>
                 <option>high</option>
               </select>
             </div>
-            <div className="form-group">
-              <label>Status</label>
-              <select className="input" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+            <div>
+              <label style={label}>Status</label>
+              <select
+                style={input}
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              >
                 <option>todo</option>
                 <option>in_progress</option>
                 <option>completed</option>
               </select>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <button type="submit" className="btn btn-primary">Create Task</button>
-            <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button type="submit" style={btnPrimary}>Create</button>
+            <button type="button" onClick={() => setShowForm(false)} style={btnSecondary}>Cancel</button>
           </div>
         </form>
       )}
 
-      {!showForm && user?.role !== 'super_admin' && (
-        <button onClick={() => setShowForm(true)} className="btn btn-primary" style={{ marginBottom: 20 }}>+ Create Task</button>
-      )}
+      {error && <div style={errorAlert}>{error}</div>}
 
-      {error && <div className="alert error">{error}</div>}
       {loading ? <p>Loading...</p> : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Project</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tasks.map((task) => (
-              <tr key={task.id}>
-                <td>{task.title}</td>
-                <td>{projects.find((p) => p.id === task.projectId)?.name || 'N/A'}</td>
-                <td><span className="badge">{task.priority}</span></td>
-                <td>
-                  {user?.role !== 'super_admin' ? (
-                    <select value={task.status} onChange={(e) => handleUpdateStatus(task.id, e.target.value)} className="input" style={{ width: '150px' }}>
-                      <option>todo</option>
-                      <option>in_progress</option>
-                      <option>completed</option>
-                    </select>
-                  ) : (
-                    <span className="badge">{task.status}</span>
-                  )}
-                </td>
-                <td className="table-actions">
-                  {user?.role !== 'super_admin' && (
-                    <button onClick={() => handleDeleteTask(task.id)} className="btn btn-link" style={{ color: '#ef4444' }}>Delete</button>
-                  )}
-                </td>
+        <div style={tableWrap}>
+          <table style={table}>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Project</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tasks.map(task => (
+                <tr key={task.id}>
+                  <td>{task.title}</td>
+                  <td>{projects.find(p => p.id === task.projectId)?.name || 'N/A'}</td>
+                  <td><span style={badge}>{task.priority}</span></td>
+                  <td>
+                    {user?.role !== 'super_admin' ? (
+                      <select
+                        style={input}
+                        value={task.status}
+                        onChange={(e) => handleUpdateStatus(task.id, e.target.value)}
+                      >
+                        <option>todo</option>
+                        <option>in_progress</option>
+                        <option>completed</option>
+                      </select>
+                    ) : (
+                      <span style={badge}>{task.status}</span>
+                    )}
+                  </td>
+                  <td>
+                    {user?.role !== 'super_admin' && (
+                      <button onClick={() => handleDeleteTask(task.id)} style={btnDanger}>
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
+
+/* ---------------- STYLES ---------------- */
+
+const page = {
+  minHeight: '100vh',
+  padding: 24,
+  background: 'linear-gradient(135deg,#f8fafc,#eef2ff)'
+};
+
+const topbar = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '16px 24px',
+  background: 'linear-gradient(90deg,#4f46e5,#6366f1)',
+  color: '#fff',
+  borderRadius: 16,
+  marginBottom: 24
+};
+
+const card = {
+  background: '#fff',
+  padding: 20,
+  borderRadius: 16,
+  border: '1px solid #e5e7eb',
+  boxShadow: '0 12px 30px rgba(0,0,0,.06)',
+  marginBottom: 20
+};
+
+const filterCard = {
+  ...card,
+  display: 'flex',
+  gap: 12,
+  alignItems: 'center'
+};
+
+const formGroup = { marginBottom: 12 };
+const twoCol = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 };
+
+const label = { fontWeight: 600, marginBottom: 6, display: 'block' };
+
+const input = {
+  padding: '10px 12px',
+  borderRadius: 10,
+  border: '1px solid #d1d5db'
+};
+
+const btnPrimary = {
+  padding: '10px 18px',
+  borderRadius: 10,
+  border: 'none',
+  background: 'linear-gradient(90deg,#4f46e5,#6366f1)',
+  color: '#fff',
+  fontWeight: 600,
+  cursor: 'pointer'
+};
+
+const btnSecondary = {
+  ...btnPrimary,
+  background: '#e0e7ff',
+  color: '#3730a3',
+  marginRight: 10
+};
+
+const btnDanger = {
+  padding: '8px 14px',
+  borderRadius: 10,
+  border: 'none',
+  background: '#fee2e2',
+  color: '#991b1b',
+  fontWeight: 600
+};
+
+const badge = {
+  padding: '4px 10px',
+  borderRadius: 999,
+  background: '#e0e7ff',
+  color: '#3730a3',
+  fontWeight: 600,
+  fontSize: 12
+};
+
+const tableWrap = {
+  overflowX: 'auto',
+  background: '#fff',
+  borderRadius: 16,
+  boxShadow: '0 12px 30px rgba(0,0,0,.06)'
+};
+
+const table = {
+  width: '100%',
+  borderCollapse: 'collapse'
+};
+
+const errorAlert = {
+  background: '#fee2e2',
+  color: '#991b1b',
+  padding: 14,
+  borderRadius: 12,
+  marginBottom: 16
+};
+
+const infoAlert = {
+  background: '#ecfeff',
+  color: '#0369a1',
+  border: '1px solid #bae6fd',
+  padding: 14,
+  borderRadius: 12,
+  marginBottom: 16
+};
