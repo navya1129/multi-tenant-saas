@@ -1,53 +1,53 @@
-# Platform Requirements Specification
+# Platform Requirements Specification – Version A
 
-## 1. Executive Summary
-Enterprise multi-tenant platform for comprehensive project and task orchestration with enforced organizational isolation, hierarchical access controls, and flexible subscription management.
+## 1. Overview
+This document defines the requirements for an enterprise-grade multi-tenant system designed to manage projects and tasks across multiple organizations. The platform ensures strict separation between tenants, layered access control, and adaptable subscription handling.
 
-## 2. User Roles
-- **Platform Administrator**: System-level oversight; tenant lifecycle management, subscription configuration, platform health monitoring.
-- **Organization Administrator**: Tenant-scoped authority; user provisioning, project orchestration, resource quota tracking.
-- **Team Member**: Task execution; assigned project participation, status updates, team collaboration.
+## 2. User Categories
+- **Platform Administrator**: Oversees the entire system, manages tenant onboarding and lifecycle, configures subscriptions, and monitors overall platform health.
+- **Organization Administrator**: Operates within a single tenant, handling user management, project control, and monitoring resource usage.
+- **Team Member**: Participates in assigned projects, updates task progress, and collaborates with teammates.
 
-## 3. Core Functional Requirements (FR)
-1. Organization registration with unique subdomain allocation.
-2. Platform administrator access with cross-tenant visibility.
-3. Organization-scoped authentication via tenant subdomain.
-4. Token-based session management with 24-hour lifecycle.
-5. Tenant lifecycle operations (admin-controlled plan, status, quota modifications).
-6. User account management within organizational boundaries (admin creation/deletion; self-service profile updates).
-7. Three-tier permission model: platform_admin, org_admin, team_member.
-8. Subscription quota enforcement (user_limit, project_limit) per tenant.
-9. Project lifecycle management with status tracking (active/archived/completed).
-10. Task orchestration with priority (low/medium/high) and state (pending/active/done) management.
-11. Cross-user task assignment within organizational scope; reassignment support.
-12. Advanced filtering, search, and pagination for users, projects, tasks.
-13. Analytics dashboard displaying tenant-specific metrics and activity.
-14. Comprehensive audit trail for security-critical operations (auth, CRUD).
-15. System health monitoring endpoint for orchestration layers.
-16. Email uniqueness enforced per tenant; platform admin operates tenant-agnostic.
-17. Data isolation via tenant-scoped query filtering.
-18. Standardized error responses using JSON envelope { success, message, data? }.
-19. Pre-populated demonstration data for accelerated onboarding.
-20. Containerized architecture (database, api, client) with automated schema evolution and seeding.
+## 3. Functional Requirements (FR)
+1. Ability to create organizations with a unique subdomain.
+2. Platform-level administrators can view and manage all tenants.
+3. Authentication scoped to organization context.
+4. JWT-based authentication with a 24-hour validity period.
+5. Tenant administration including plan changes, status updates, and quota adjustments.
+6. User lifecycle management within tenants, including self-profile updates.
+7. Role hierarchy consisting of platform_admin, org_admin, and team_member.
+8. Enforcement of subscription limits on users and projects.
+9. Project creation and lifecycle control with multiple status states.
+10. Task management with priority and progress tracking.
+11. Assignment and reassignment of tasks among users in the same organization.
+12. Search, filter, and pagination capabilities across key entities.
+13. Analytics dashboard presenting tenant-level insights.
+14. Audit logging for all security-sensitive operations.
+15. Health check endpoint for system monitoring.
+16. Email addresses unique per tenant; platform admins are tenant-independent.
+17. Data isolation implemented via tenant-specific query filters.
+18. Unified JSON-based API response format.
+19. Sample data provided for demonstration and testing.
+20. Fully containerized deployment with automated migrations and seed scripts.
 
 ## 4. Non-Functional Requirements (NFR)
-1. **Security**: JWT, bcrypt hashing, RBAC, validation, audit logs, CORS.
-2. **Performance**: Typical API responses < 300ms under moderate load.
-3. **Scalability**: Stateless API; DB indexed on tenant and foreign keys.
-4. **Availability**: Health endpoints for orchestration; recover via docker-compose restart.
-5. **Usability**: Responsive UI, clear errors, protected routes with redirects.
-6. **Maintainability**: TypeScript backend, structured folders, lint-ready configs.
+1. **Security**: Secure authentication, encrypted passwords, RBAC, input validation, and logging.
+2. **Performance**: Average API response time under 300 milliseconds.
+3. **Scalability**: Stateless backend services with indexed database queries.
+4. **Availability**: Health endpoints and quick recovery using container orchestration.
+5. **Usability**: Responsive interface with clear feedback and route protection.
+6. **Maintainability**: Strong typing, clean project structure, and linting support.
 
-## 5. Constraints & Assumptions
-- Single shared database with tenant_id isolation.
-- Subdomains mapped logically (parameter passed in auth for demo); DNS not enforced in dev.
-- Email unique per tenant; super admin not bound to tenant.
+## 5. Assumptions and Constraints
+- Shared database architecture with tenant-based segregation.
+- Subdomains handled logically during development without DNS enforcement.
+- Email uniqueness enforced within each tenant only.
 
-## 6. Success Metrics
-- New tenant can be registered and logged in within 2 minutes using docker-compose.
-- All 19 API endpoints pass integration tests (provided script).
-- Subscription limits prevent overage and return 403.
-- No cross-tenant data leakage in listings or detail endpoints.
+## 6. Key Success Indicators
+- Tenant onboarding and login completed within two minutes using containers.
+- All defined APIs successfully pass integration testing.
+- Subscription overuse is blocked with proper authorization errors.
+- Tenant data remains fully isolated at all times.
 
-## 7. Out of Scope
-- SSO/OAuth, in-app payments, email delivery, file uploads, real-time websockets.
+## 7. Exclusions
+- Single sign-on, payment processing, email notifications, file storage, and real-time communication features are excluded.
