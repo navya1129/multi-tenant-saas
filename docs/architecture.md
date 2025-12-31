@@ -1,327 +1,181 @@
-# Architecture Document
+# Architecture Documentation – Version A
 
-## System Architecture
+## System Design Overview
 
-### High-Level Architecture Diagram
+### High-Level System Architecture
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        Browser[Web Browser]
+    subgraph Client
+        Browser[Client Browser]
     end
-    
-    subgraph "Frontend Layer - Port 3000"
-        Frontend[React Frontend<br/>Vite + React Router]
+
+    subgraph Frontend["Frontend Tier (Port 3000)"]
+        FE[React Application<br/>Vite + React Router]
     end
-    
-    subgraph "Backend Layer - Port 5000"
-        API[Express API Server<br/>Node.js + TypeScript]
-        Auth[JWT Authentication<br/>Middleware]
-        RBAC[Role-Based Access<br/>Control Middleware]
-        Tenant[Tenant Isolation<br/>Middleware]
+
+    subgraph Backend["Backend Tier (Port 5000)"]
+        API[Express Server<br/>Node.js + TypeScript]
+        AUTH[JWT Verification<br/>Middleware]
+        PERM[RBAC Authorization<br/>Middleware]
+        TENANT[Tenant Scope<br/>Middleware]
     end
-    
-    subgraph "Database Layer - Port 5432"
-        DB[(PostgreSQL 15<br/>Multi-Tenant Database)]
+
+    subgraph Database["Data Layer (Port 5432)"]
+        DB[(PostgreSQL 15<br/>Tenant-Aware Database)]
     end
-    
-    Browser -->|HTTPS/HTTP| Frontend
-    Frontend -->|API Calls<br/>REST/JSON| API
-    API --> Auth
-    Auth --> RBAC
-    RBAC --> Tenant
-    Tenant --> DB
+
+    Browser --> FE
+    FE --> API
+    API --> AUTH
+    AUTH --> PERM
+    PERM --> TENANT
+    TENANT --> DB
 ```
 
-### Architecture Components
+### Component Breakdown
 
-**Client Layer:**
-- Web browsers accessing the application via HTTP/HTTPS
+**Client Layer**
+- End users interact with the system using standard web browsers over HTTP or HTTPS
 
-**Frontend Layer (Port 3000):**
-- React 18 with Vite build tool
-- React Router for client-side routing
-- Protected routes with authentication checks
-- Responsive UI design
+**Frontend Layer (3000)**
+- Built using React 18 and bundled with Vite
+- Client-side routing via React Router
+- Secure routes protected by authentication checks
+- Adaptive and responsive user interface
 
-**Backend Layer (Port 5000):**
-- Express.js API server with TypeScript
-- JWT Authentication Middleware - validates tokens
-- Role-Based Access Control - checks user permissions
-- Tenant Isolation Middleware - filters data by tenant_id
-- RESTful API endpoints
-- Consistent error handling
+**Backend Layer (5000)**
+- REST API implemented using Express and TypeScript
+- JWT middleware responsible for token validation
+- RBAC layer ensures role-specific access
+- Tenant middleware enforces data separation
+- Centralized error handling across endpoints
 
-**Database Layer (Port 5432):**
-- PostgreSQL 15 for data persistence
-- Multi-tenant schema with tenant_id columns
-- Prisma ORM for database operations
-- Automatic migrations and seeding
+**Database Layer (5432)**
+- PostgreSQL 15 used for persistent storage
+- Multi-tenant design using tenant_id references
+- Prisma ORM for database abstraction
+- Migration and seed automation
 
-### Authentication Flow
+## Authentication Lifecycle
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Frontend
-    participant API
-    participant JWT
-    participant Database
-    
-    User->>Frontend: Enter credentials + subdomain
-    Frontend->>API: POST /api/auth/login
-    API->>Database: Verify tenant exists
-    Database-->>API: Tenant data
-    API->>Database: Verify user credentials
-    Database-->>API: User data
-    API->>JWT: Generate token (userId, tenantId, role)
-    JWT-->>API: JWT token
-    API-->>Frontend: {token, user data}
-    Frontend->>Frontend: Store token in localStorage
-    Frontend-->>User: Redirect to dashboard
+    participant U as User
+    participant F as Frontend
+    participant A as API
+    participant J as JWT
+    participant D as Database
+
+    U->>F: Submit credentials and tenant
+    F->>A: Login request
+    A->>D: Validate tenant
+    D-->>A: Tenant found
+    A->>D: Validate user
+    D-->>A: User verified
+    A->>J: Issue token
+    J-->>A: JWT
+    A-->>F: Token + user info
+    F->>F: Save token
+    F-->>U: Navigate to dashboard
 ```
 
-## Database Schema Design
+## Database Design
 
-### Entity Relationship Diagram
+### Entity Relationships
 
 ```mermaid
 erDiagram
-    TENANTS ||--o{ USERS : "has many"
-    TENANTS ||--o{ PROJECTS : "has many"
-    TENANTS ||--o{ TASKS : "has many"
-    TENANTS ||--o{ AUDIT_LOGS : "has many"
-    
-    USERS ||--o{ PROJECTS : "creates"
-    USERS ||--o{ TASKS : "assigned to"
-    USERS ||--o{ AUDIT_LOGS : "performs actions"
-    
-    PROJECTS ||--o{ TASKS : "contains"
-    
-    TENANTS {
-        uuid id PK
-        string name
-        string subdomain UK
-        enum status
-        enum subscription_plan
-        int max_users
-        int max_projects
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    USERS {
-        uuid id PK
-        uuid tenant_id FK
-        string email
-        string password_hash
-        string full_name
-        enum role
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PROJECTS {
-        uuid id PK
-        uuid tenant_id FK
-        string name
-        text description
-        enum status
-        uuid created_by FK
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    TASKS {
-        uuid id PK
-        uuid project_id FK
-        uuid tenant_id FK
-        string title
-        text description
-        enum status
-        enum priority
-        uuid assigned_to FK
-        date due_date
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    AUDIT_LOGS {
-        uuid id PK
-        uuid tenant_id FK
-        uuid user_id FK
-        string action
-        string entity_type
-        string entity_id
-        string ip_address
-        timestamp created_at
-    }
+    TENANTS ||--o{ USERS : owns
+    TENANTS ||--o{ PROJECTS : manages
+    TENANTS ||--o{ TASKS : contains
+    TENANTS ||--o{ AUDIT_LOGS : records
+
+    USERS ||--o{ PROJECTS : creates
+    USERS ||--o{ TASKS : assigned
+    USERS ||--o{ AUDIT_LOGS : logs
+
+    PROJECTS ||--o{ TASKS : includes
 ```
 
-### Database Tables
+### Table Summary
 
-**1. tenants**
-- Stores organization information
-- Each tenant has unique subdomain
-- Contains subscription plan and limits
-- Status: active, suspended, or trial
+**tenants**
+- Organization-level data
+- Unique subdomain per tenant
+- Subscription and quota configuration
 
-**2. users**
-- User accounts with authentication credentials
-- Foreign key to tenants (NULL for super_admin)
-- Unique constraint on (tenant_id, email)
-- Roles: super_admin, tenant_admin, user
+**users**
+- Login and identity records
+- Linked to tenants
+- Role-based permissions
 
-**3. projects**
-- Project management records
-- Belongs to one tenant
-- Created by a user
-- Status: active, archived, completed
+**projects**
+- Project entities scoped to tenants
+- Lifecycle controlled via status
 
-**4. tasks**
-- Task items within projects
-- Belongs to both project and tenant
-- Can be assigned to users
-- Priority: low, medium, high
-- Status: todo, in_progress, completed
+**tasks**
+- Work items within projects
+- Priority and progress tracking
 
-**5. audit_logs**
-- Security and compliance tracking
-- Records all important actions
-- Includes tenant_id, user_id, action type
-- Stores IP address for security
+**audit_logs**
+- Records security-relevant actions
+- Used for compliance and traceability
 
-### Data Isolation Strategy
+## Tenant Isolation Model
 
 ```mermaid
 graph TB
-    subgraph "Tenant A Data"
-        TA[Tenant: Company A]
-        UA[Users]
-        PA[Projects]
-        TKA[Tasks]
-    end
-    
-    subgraph "Tenant B Data"
-        TB[Tenant: Company B]
-        UB[Users]
-        PB[Projects]
-        TKB[Tasks]
-    end
-    
-    Filter[tenant_id Filter<br/>Applied to All Queries]
-    
-    TA --> UA
-    TA --> PA
-    TA --> TKA
-    
-    TB --> UB
-    TB --> PB
-    TB --> TKB
-    
-    Filter -.->|Enforces| TA
-    Filter -.->|Enforces| TB
+    Filter[Tenant Filter]
+    A[Tenant A]
+    B[Tenant B]
+
+    Filter --> A
+    Filter --> B
 ```
 
-**Isolation Mechanism:**
-- Every data record (except super_admin users) has tenant_id
-- All queries automatically filtered by tenant_id from JWT token
-- Super_admin can access all tenants
-- Foreign key constraints with CASCADE delete
-- Indexes on tenant_id columns for performance
+- All records include tenant_id
+- JWT token supplies tenant context
+- Super admins bypass tenant restrictions
+- Indexed tenant_id for performance
 
-## API Architecture
+## API Structure
 
-### API Endpoint List
+### Core Endpoints
 
-#### Authentication Module
-- `POST /api/auth/register-tenant` - Register new tenant (public)
-- `POST /api/auth/login` - User login (public)
-- `GET /api/auth/me` - Get current user (authenticated)
-- `POST /api/auth/logout` - User logout (authenticated)
+**Auth**
+- Register tenant
+- Login / Logout
+- Fetch current user
 
-#### Tenant Management
-- `GET /api/tenants/:tenantId` - Get tenant details (member or super_admin)
-- `PUT /api/tenants/:tenantId` - Update tenant (admin or super_admin)
-- `GET /api/tenants` - List all tenants (super_admin only)
+**Tenants**
+- View and update tenant details
+- List all tenants (super admin)
 
-#### User Management
-- `POST /api/tenants/:tenantId/users` - Add user (tenant_admin)
-- `GET /api/tenants/:tenantId/users` - List users (tenant members)
-- `PUT /api/users/:userId` - Update user (tenant_admin or self)
-- `DELETE /api/users/:userId` - Delete user (tenant_admin)
+**Users**
+- Create, read, update, delete tenant users
 
-#### Project Management
-- `POST /api/projects` - Create project (authenticated)
-- `GET /api/projects` - List projects (authenticated)
-- `PUT /api/projects/:projectId` - Update project (creator or tenant_admin)
-- `DELETE /api/projects/:projectId` - Delete project (creator or tenant_admin)
+**Projects**
+- Manage tenant projects
 
-#### Task Management
-- `POST /api/projects/:projectId/tasks` - Create task (authenticated)
-- `GET /api/projects/:projectId/tasks` - List tasks (authenticated)
-- `PATCH /api/tasks/:taskId/status` - Update task status (authenticated)
-- `PUT /api/tasks/:taskId` - Update task (authenticated)
-- `DELETE /api/tasks/:taskId` - Delete task (tenant_admin)
+**Tasks**
+- Manage project tasks
 
-#### System
-- `GET /api/health` - Health check (public)
+## Security Model
 
-### API Security
+- Stateless JWT authentication
+- 24-hour token validity
+- Role and tenant-based authorization
+- Layered middleware request processing
 
-**Authentication:**
-- JWT-based stateless authentication
-- Token expiry: 24 hours
-- Token payload: {userId, tenantId, role}
-- Authorization header: `Bearer {token}`
+## API Responses
 
-**Authorization Levels:**
-- **Public**: No authentication required
-- **Authenticated**: Valid JWT token required
-- **Role-Based**: Specific role required (user, tenant_admin, super_admin)
-- **Tenant-Scoped**: User must belong to the tenant
-
-**Request Flow:**
-1. Client sends request with JWT token
-2. Auth middleware validates token
-3. RBAC middleware checks role permissions
-4. Tenant isolation middleware filters by tenant_id
-5. Controller processes request
-6. Response returned with consistent format
-
-### Response Format
-
-**Success Response:**
+Success:
 ```json
-{
-  "success": true,
-  "message": "Optional message",
-  "data": { /* response data */ }
-}
+{ "success": true, "data": {} }
 ```
 
-**Error Response:**
+Failure:
 ```json
-{
-  "success": false,
-  "message": "Error description"
-}
+{ "success": false, "message": "Error" }
 ```
-
-**HTTP Status Codes:**
-- 200: Success
-- 201: Created
-- 400: Bad Request (validation error)
-- 401: Unauthorized (not authenticated)
-- 403: Forbidden (not authorized)
-- 404: Not Found
-- 409: Conflict (duplicate resource)
-- 500: Internal Server Error
-
----
-
-For detailed API documentation, see [API.md](./API.md).
-
-For PNG image exports of diagrams, see [images/diagrams.md](./images/diagrams.md).
-
