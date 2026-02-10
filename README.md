@@ -85,8 +85,8 @@ The system follows a three-tier architecture:
 ### Steps (Docker)
 
 ```bash
-git clone https://github.com/SRINIJA-PULLIPUDI/Multi-Tenant-SaaS-Platform-with-Project-and-Task-Management-System.git
-cd Multi-Tenant-SaaS-Platform-with-Project-and-Task-Management-System
+git clone https://github.com/KrishnaTulasiSatti/Multi-Tenant-Saas-Platform.git
+cd Multi-Tenant-SaaS-Platform
 docker-compose up -d
 ```
 
