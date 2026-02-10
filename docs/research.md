@@ -1,215 +1,193 @@
-# Research Analysis Document – Version A
-
-## Executive Overview
-
-This research document examines the architectural structure, technology choices, and security framework applied in the development of a multi-tenant SaaS system for managing projects and tasks. The platform is designed to serve multiple organizations simultaneously while preserving strict tenant isolation, enforcing role-based permissions, and regulating resources through subscription plans. The analysis centers on multi-tenancy design strategies, rationale behind technology selection, and comprehensive security implementation.
+# Multi-Tenant SaaS Platform – Project & Task Management System
 
 ---
 
-## Multi-Tenancy Architecture Evaluation
+## 1. Multi-Tenancy Analysis
 
-### Concept of Multi-Tenancy
-
-Multi-tenancy is an architectural paradigm where a single application instance supports multiple customers, known as tenants, with logical separation of their data. Choosing the right tenancy model has a direct impact on scalability, security posture, operational effort, and overall cost. Three architectural patterns were reviewed during system design.
+Multi-tenancy is a core architectural concept in Software-as-a-Service (SaaS) applications where a single instance of an application serves multiple customers, known as tenants. Each tenant represents an independent organization with isolated data, users, and configuration. Designing an effective multi-tenant architecture requires balancing data isolation, scalability, cost efficiency, and operational complexity. This section analyzes three common multi-tenancy approaches and justifies the chosen approach for this project.
 
 ---
 
-### Model 1: Independent Database per Tenant
+### 1.1 Shared Database with Shared Schema (Using `tenant_id`)
 
-**Overview:**  
-Each tenant is provisioned with a dedicated database, providing maximum isolation at the infrastructure level.
+In the shared database and shared schema approach, all tenants share the same database and the same set of tables. Each table contains a `tenant_id` column that associates every record with a specific tenant. Application logic ensures that all queries filter data based on the authenticated tenant’s `tenant_id`.
+
+For example, a query to retrieve projects would explicitly include a condition such as `WHERE tenant_id = ?`. This ensures that tenants only access their own data.
 
 **Advantages:**
-- Strong physical data separation
-- Independent backup and restore processes
-- Easier regulatory compliance
-- Performance isolation per tenant
-- Flexible tenant-specific configurations
+- Cost-efficient, as only one database instance is required
+- Simple to provision new tenants without database setup
+- Easier to scale horizontally as tenant count grows
+- Straightforward to containerize and deploy using Docker
+- Well-suited for early-stage and mid-scale SaaS platforms
 
 **Disadvantages:**
-- High infrastructure and maintenance cost
-- Operational complexity at scale
-- Complicated schema migration processes
-- Limited feasibility for cross-tenant reporting
-- Underutilized database resources
+- Risk of data leakage if tenant filtering is incorrectly implemented
+- Requires strict coding discipline and consistent use of middleware
+- Authorization logic becomes more complex
 
-**Assessment:**  
-This model is suitable for enterprise-grade customers with strict compliance requirements but is inefficient for large-scale SMB SaaS platforms.
+Despite these challenges, this approach is widely used in modern SaaS applications due to its simplicity and scalability when implemented correctly.
 
 ---
 
-### Model 2: Schema-Based Tenant Separation
+### 1.2 Shared Database with Separate Schema (Per Tenant)
 
-**Overview:**  
-A single database hosts multiple schemas, each representing an individual tenant with identical structures.
+In this approach, tenants share the same database server, but each tenant has its own database schema. For example, one tenant’s data may reside in `tenant_a.users`, while another tenant’s data resides in `tenant_b.users`.
 
 **Advantages:**
-- Logical data separation within one database
-- Lower cost than multiple databases
-- Simplified backups compared to shared tables
-- Partial support for customization
+- Stronger logical isolation compared to shared schema
+- Reduced risk of accidental cross-tenant data access
+- Easier tenant-specific data cleanup or migration
 
 **Disadvantages:**
-- Migration complexity increases with tenant count
-- Performance degradation with many schemas
-- Additional overhead for schema switching
-- Harder system observability
+- Increased complexity in schema management
+- Database migrations must be applied across multiple schemas
+- Higher operational overhead as tenant count increases
+- More complex automation and deployment processes
 
-**Assessment:**  
-This approach balances isolation and cost and works well for platforms with a limited to moderate tenant base.
-
----
-
-### Model 3: Shared Schema with Tenant Identifier (Chosen Approach)
-
-**Overview:**  
-All tenants share a common schema, with each record tagged using a `tenant_id` field to enforce logical separation.
-
-**Benefits:**
-- Centralized operational management
-- Efficient use of infrastructure resources
-- Simplified global schema changes
-- Reduced operational expenses
-- Proven scalability to large tenant volumes
-- Unified monitoring and analytics capabilities
-
-**Risks:**
-- Potential data exposure if tenant filters fail
-- Limited schema customization per tenant
-
-**Risk Mitigation:**
-- Mandatory tenant filters at ORM level
-- Composite indexing with `tenant_id`
-- Defense-in-depth strategies
-- Automated isolation testing
-- Extensive audit logging
-
-**Assessment:**  
-This strategy was selected for its scalability, cost efficiency, and operational simplicity, making it ideal for SMB-oriented SaaS solutions.
+While this approach improves isolation, it introduces additional maintenance complexity that may not be justified for smaller SaaS platforms.
 
 ---
 
-## Technology Stack Rationale
+### 1.3 Separate Database per Tenant
 
-### Backend Platform
-
-**Selected Technologies:** Node.js, Express, TypeScript
-
-**Justification:**
-- Non-blocking I/O suitable for API-heavy workloads
-- Type safety reduces runtime errors
-- Mature ecosystem and middleware availability
-- Easy containerization and microservice readiness
-
-**Limitations:**  
-Not optimized for CPU-heavy operations, which are minimal in CRUD-based systems.
-
----
-
-### Database Platform
-
-**Chosen Database:** PostgreSQL 15
-
-**Reasons:**
-- Strong transactional guarantees
-- Advanced indexing and performance tuning
-- Flexible data types including JSON
-- Robust constraint enforcement
-- Battle-tested scalability
-
----
-
-### ORM Framework
-
-**Selected Tool:** Prisma
+The separate database per tenant approach provides each tenant with an entirely independent database instance. This offers the highest level of data isolation.
 
 **Advantages:**
-- End-to-end type safety
-- Streamlined migrations
-- Efficient query generation
-- Excellent developer tooling
+- Maximum security and data isolation
+- Easier compliance with strict regulatory requirements
+- Independent performance tuning per tenant
+
+**Disadvantages:**
+- High infrastructure and operational cost
+- Difficult to scale with many tenants
+- Complex monitoring, backups, and migrations
+- Poor fit for automated Docker-based environments
+
+This approach is typically used for large enterprise customers or highly regulated environments but is unsuitable for most general-purpose SaaS products.
 
 ---
 
-### Frontend Technology
+### 1.4 Comparison Table
 
-**Chosen Stack:** React 18 with Vite
-
-**Benefits:**
-- Component-driven architecture
-- Fast build and reload cycles
-- Strong community support
-- High performance rendering
+| Approach | Data Isolation | Cost | Scalability | Operational Complexity |
+|--------|---------------|------|-------------|------------------------|
+| Shared DB + Shared Schema | Medium | Low | High | Medium |
+| Shared DB + Separate Schema | High | Medium | Medium | High |
+| Separate DB per Tenant | Very High | High | Low | Very High |
 
 ---
 
-### Authentication Strategy
+### 1.5 Chosen Approach and Justification
 
-**Method:** JWT (HS256)
+**Chosen Approach:** Shared Database with Shared Schema using a `tenant_id` column.
 
-**Strengths:**
-- Stateless authentication supports scaling
-- Reduced database dependency
-- Well-suited for SPA architectures
+This approach was selected because it best aligns with the project requirements and constraints. The project explicitly mandates tenant identification via `tenant_id`, indexing on tenant-related columns, and Docker-based deployment. A shared schema approach simplifies database management, allows easy onboarding of new tenants, and ensures efficient resource utilization.
 
-**Drawback:**  
-Limited token revocation, mitigated by short expiry periods.
+Additionally, the project enforces strict API-level authorization and role-based access control (RBAC), which mitigates the primary risk associated with shared schemas. This architecture is widely adopted in production SaaS systems and provides the best balance between scalability, simplicity, and cost-effectiveness for this application.
 
 ---
 
-## Security Design
+## 2. Technology Stack Justification
 
-### Authentication Controls
-- Password hashing using bcrypt
-- Salted hashes to prevent precomputed attacks
-- Signed JWT tokens
-- Mandatory token validation middleware
+Selecting the appropriate technology stack is critical to build a scalable, maintainable, and secure multi-tenant SaaS platform. The following technologies were chosen based on project requirements.
 
 ---
 
-### Authorization Framework
-- Role-based permissions: super admin, tenant admin, user
-- Middleware-enforced access control
-- Tenant-aware query validation
+### Backend Framework: Node.js with Express
+
+Node.js with the Express framework was selected for backend development due to its lightweight nature, high performance for I/O-bound applications, and large ecosystem. Express enables rapid development of RESTful APIs and integrates well with middleware-based authentication and authorization mechanisms.
+
+**Alternatives Considered:**  
+- Django (Python)  
+- Spring Boot (Java)
+
+While these alternatives provide strong features, Node.js was preferred due to its simplicity, asynchronous model, and seamless integration with JavaScript-based frontend development.
 
 ---
 
-### Tenant Data Protection
-- Tenant-scoped queries enforced
-- Foreign key constraints ensure ownership
-- Audited elevated access
+### Frontend Framework: React
+
+React was chosen for the frontend because of its component-based architecture, efficient rendering through the virtual DOM, and widespread industry adoption. React enables the creation of responsive and dynamic user interfaces and integrates well with modern authentication patterns such as JWT-based APIs.
+
+**Alternatives Considered:**  
+- Angular  
+- Vue.js
+
+React was selected due to its flexibility, community support, and suitability for building role-based user interfaces.
 
 ---
 
-### Input Validation
-- Schema validation using Zod
-- Protection against malformed input
-- ORM-level query parameterization
+### Database: PostgreSQL
+
+PostgreSQL was selected as the relational database management system due to its ACID compliance, strong support for relational integrity, advanced indexing capabilities, and reliability. PostgreSQL performs well for multi-tenant systems when combined with indexed `tenant_id` columns.
+
+**Alternatives Considered:**  
+- MySQL  
+- MongoDB
+
+PostgreSQL was preferred for its robust relational features and better support for complex queries and constraints.
 
 ---
 
-### Audit and Monitoring
-- Logs record user actions and authentication events
-- Supports compliance and incident analysis
+### Authentication Method: JWT (JSON Web Tokens)
+
+JWT-based authentication was chosen for its stateless nature and scalability. JWTs allow the backend to authenticate requests without storing session data, making them ideal for distributed systems and Docker-based deployments.
+
+**Alternatives Considered:**  
+- Session-based authentication  
+- OAuth-only authentication
+
+JWTs provide a simpler and more scalable solution for this project’s requirements.
 
 ---
 
-### Network Protection
-- Configured CORS policies
-- HTTPS recommended
-- Rate limiting and reverse proxies for production
+### Deployment Platform: Docker & Docker Compose
+
+Docker was selected to containerize the database, backend, and frontend services, ensuring consistent environments across development and evaluation. Docker Compose enables one-command deployment and simplifies inter-service communication.
+
+**Alternatives Considered:**  
+- Virtual machines  
+- Platform-as-a-Service (PaaS)
+
+Docker was chosen to meet the project’s mandatory containerization requirements.
 
 ---
 
-## Scalability and Operations
-- Stateless backend services
-- Indexed database queries
-- Pagination for large datasets
-- Container-based deployments
-- Automated migrations
+## 3. Security Considerations
+
+Security is a critical aspect of any multi-tenant SaaS platform. This system incorporates multiple layers of security to protect tenant data and system integrity.
 
 ---
 
-## Final Remarks
+### 3.1 Security Measures
 
-The selected architecture, built on shared-schema multi-tenancy with PostgreSQL, Node.js, TypeScript, React, and JWT security, provides a scalable, secure, and cost-effective SaaS foundation. The platform is designed to grow with future demands while maintaining strong isolation and security guarantees.
+1. Strict tenant-based data filtering using `tenant_id`
+2. JWT-based authentication with token expiration
+3. Role-based access control (RBAC)
+4. Secure password hashing
+5. API input validation and error handling
+
+---
+
+### 3.2 Data Isolation Strategy
+
+Data isolation is enforced at the application layer by ensuring every database query includes a `tenant_id` filter. Middleware extracts the tenant information from the authenticated JWT and injects it into request processing. Super admin users are explicitly handled as exceptions with a null tenant context.
+
+---
+
+### 3.3 Authentication and Authorization
+
+Authentication is handled using JWTs issued upon successful login. Authorization is enforced through middleware that checks user roles before allowing access to protected endpoints. Different roles such as Super Admin, Tenant Admin, and User have distinct permission levels.
+
+---
+
+### 3.4 Password Hashing Strategy
+
+All user passwords are securely hashed using industry-standard hashing algorithms such as bcrypt. Salting is applied automatically to prevent rainbow table attacks, and plaintext passwords are never stored in the database.
+
+---
+
+### 3.5 API Security Measures
+
+API security measures include enforcing HTTPS communication, configuring CORS to allow only trusted frontend origins, validating all incoming requests, and returning appropriate HTTP status codes. Audit logs are maintained to track sensitive actions and improve traceability.

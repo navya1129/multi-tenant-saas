@@ -1,181 +1,208 @@
-# Architecture Documentation – Version A
+# System Architecture Document
+## Multi-Tenant SaaS Platform – Project & Task Management System
 
-## System Design Overview
+---
 
-### High-Level System Architecture
+## 1. System Architecture Diagram
 
-```mermaid
-graph TB
-    subgraph Client
-        Browser[Client Browser]
-    end
+The system follows a three-tier architecture consisting of a client layer, application layer, and data layer.
 
-    subgraph Frontend["Frontend Tier (Port 3000)"]
-        FE[React Application<br/>Vite + React Router]
-    end
+### Components:
+- **Client (Browser):** End users access the system via a web browser.
+- **Frontend Application:** A React-based single-page application responsible for UI rendering and API communication.
+- **Backend API Server:** A Node.js (Express) REST API that handles authentication, business logic, and data access.
+- **Database:** PostgreSQL database used for persistent data storage.
+- **Authentication Flow:** JWT-based authentication is used for securing API endpoints.
 
-    subgraph Backend["Backend Tier (Port 5000)"]
-        API[Express Server<br/>Node.js + TypeScript]
-        AUTH[JWT Verification<br/>Middleware]
-        PERM[RBAC Authorization<br/>Middleware]
-        TENANT[Tenant Scope<br/>Middleware]
-    end
+### Authentication Flow:
+- User submits login credentials via the frontend.
+- Backend validates credentials and issues a JWT.
+- Frontend stores JWT and attaches it to all protected API requests.
+- Backend validates JWT and enforces role-based access control.
 
-    subgraph Database["Data Layer (Port 5432)"]
-        DB[(PostgreSQL 15<br/>Tenant-Aware Database)]
-    end
+**Diagram Location:**  
+`docs/images/system-architecture.png`
 
-    Browser --> FE
-    FE --> API
-    API --> AUTH
-    AUTH --> PERM
-    PERM --> TENANT
-    TENANT --> DB
-```
+---
 
-### Component Breakdown
+## 2. Database Schema Design (ERD)
 
-**Client Layer**
-- End users interact with the system using standard web browsers over HTTP or HTTPS
+The database follows a shared schema multi-tenant design where all tenant data is stored in shared tables and isolated using a `tenant_id` column.
 
-**Frontend Layer (3000)**
-- Built using React 18 and bundled with Vite
-- Client-side routing via React Router
-- Secure routes protected by authentication checks
-- Adaptive and responsive user interface
+### Tables Overview:
 
-**Backend Layer (5000)**
-- REST API implemented using Express and TypeScript
-- JWT middleware responsible for token validation
-- RBAC layer ensures role-specific access
-- Tenant middleware enforces data separation
-- Centralized error handling across endpoints
+- **tenants**
+  - id (PK)
+  - name
+  - subdomain (UNIQUE)
+  - subscription_plan
+  - max_users
+  - max_projects
+  - created_at
 
-**Database Layer (5432)**
-- PostgreSQL 15 used for persistent storage
-- Multi-tenant design using tenant_id references
-- Prisma ORM for database abstraction
-- Migration and seed automation
+- **users**
+  - id (PK)
+  - tenant_id (FK, nullable for Super Admin)
+  - email
+  - password_hash
+  - full_name
+  - role
+  - is_active
+  - created_at
 
-## Authentication Lifecycle
+- **projects**
+  - id (PK)
+  - tenant_id (FK)
+  - name
+  - description
+  - status
+  - created_at
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant A as API
-    participant J as JWT
-    participant D as Database
+- **tasks**
+  - id (PK)
+  - tenant_id (FK)
+  - project_id (FK)
+  - title
+  - description
+  - status
+  - priority
+  - assigned_to
+  - due_date
+  - created_at
 
-    U->>F: Submit credentials and tenant
-    F->>A: Login request
-    A->>D: Validate tenant
-    D-->>A: Tenant found
-    A->>D: Validate user
-    D-->>A: User verified
-    A->>J: Issue token
-    J-->>A: JWT
-    A-->>F: Token + user info
-    F->>F: Save token
-    F-->>U: Navigate to dashboard
-```
+- **audit_logs**
+  - id (PK)
+  - tenant_id (FK)
+  - user_id (FK)
+  - action
+  - entity_type
+  - entity_id
+  - ip_address
+  - created_at
 
-## Database Design
+### Relationships:
+- One tenant can have many users
+- One tenant can have many projects
+- One project can have many tasks
+- One user can have many audit logs
 
-### Entity Relationships
+Indexes are applied on all `tenant_id` columns to improve query performance and ensure efficient data isolation.
 
-```mermaid
-erDiagram
-    TENANTS ||--o{ USERS : owns
-    TENANTS ||--o{ PROJECTS : manages
-    TENANTS ||--o{ TASKS : contains
-    TENANTS ||--o{ AUDIT_LOGS : records
+**ERD Image Location:**  
+`docs/images/database-erd.png`
 
-    USERS ||--o{ PROJECTS : creates
-    USERS ||--o{ TASKS : assigned
-    USERS ||--o{ AUDIT_LOGS : logs
+---
 
-    PROJECTS ||--o{ TASKS : includes
-```
+## 3. API Architecture
 
-### Table Summary
+### Authentication Module
 
-**tenants**
-- Organization-level data
-- Unique subdomain per tenant
-- Subscription and quota configuration
+- **POST /api/auth/register-tenant**  
+  Auth Required: No  
+  Roles: Public  
 
-**users**
-- Login and identity records
-- Linked to tenants
-- Role-based permissions
+- **POST /api/auth/login**  
+  Auth Required: No  
+  Roles: Public  
 
-**projects**
-- Project entities scoped to tenants
-- Lifecycle controlled via status
+- **POST /api/auth/me**  
+  Auth Required: Yes  
+  Roles: All authenticated users
 
-**tasks**
-- Work items within projects
-- Priority and progress tracking
+- **POST /api/auth/logout**  
+  Auth Required: Yes  
+  Roles: All authenticated users
 
-**audit_logs**
-- Records security-relevant actions
-- Used for compliance and traceability
+---
 
-## Tenant Isolation Model
+### Tenant Module
 
-```mermaid
-graph TB
-    Filter[Tenant Filter]
-    A[Tenant A]
-    B[Tenant B]
+- **GET /api/tenants/:tenantId**  
+  Auth Required: Yes  
+  Roles: Tenant Admin  
 
-    Filter --> A
-    Filter --> B
-```
+- **GET /api/tenants**  
+  Auth Required: Yes  
+  Roles: Super Admin  
 
-- All records include tenant_id
-- JWT token supplies tenant context
-- Super admins bypass tenant restrictions
-- Indexed tenant_id for performance
+- **PUT /api/tenants/:tenantId**  
+  Auth Required: Yes  
+  Roles: Tenant Admin
 
-## API Structure
+---
 
-### Core Endpoints
+### User Module
 
-**Auth**
-- Register tenant
-- Login / Logout
-- Fetch current user
+- **POST /api/tenants/:tenantId/users**  
+  Auth Required: Yes  
+  Roles: Tenant Admin  
 
-**Tenants**
-- View and update tenant details
-- List all tenants (super admin)
+- **GET /api/tenants/:tenantId/users**  
+  Auth Required: Yes  
+  Roles: Tenant Admin  
 
-**Users**
-- Create, read, update, delete tenant users
+- **PUT /api/users/:userId**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, Self (Only full_name)
 
-**Projects**
-- Manage tenant projects
+- **DELETE /api/users/:userId**  
+  Auth Required: Yes  
+  Roles: Tenant Admin 
 
-**Tasks**
-- Manage project tasks
+---
 
-## Security Model
+### Project Module
 
-- Stateless JWT authentication
-- 24-hour token validity
-- Role and tenant-based authorization
-- Layered middleware request processing
+- **POST /api/projects**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, User
 
-## API Responses
+- **GET /api/projects**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, User  
 
-Success:
-```json
-{ "success": true, "data": {} }
-```
+- **PUT /api/projects/:projectId**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, User (Project Creator) 
 
-Failure:
-```json
-{ "success": false, "message": "Error" }
-```
+- **DELETE /api/projects/:projectId**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, User (Project Creator)
+
+---
+
+### Task Module
+
+- **POST /api/projects/:projectId/tasks**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, User  
+
+- **GET /api/projects/:projectId/tasks**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, User  
+
+- **PATCH /api/tasks/:taskId/status**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, End User
+
+- **PUT /api/tasks/:taskId**  
+  Auth Required: Yes  
+  Roles: Tenant Admin, End User  
+
+---
+
+### System Module
+
+- **GET /api/projects/all**  
+  Auth Required: Yes  
+  Roles: Super Admin
+
+- **GET /api/tasks/all**  
+  Auth Required: Yes  
+  Roles: Super Admin
+
+- **GET /api/health**  
+  Auth Required: No  
+  Roles: Public  
+
+

@@ -1,53 +1,117 @@
-# Platform Requirements Specification – Version A
+# Product Requirements Document
+## Multi-Tenant SaaS Platform – Project & Task Management System
 
-## 1. Overview
-This document defines the requirements for an enterprise-grade multi-tenant system designed to manage projects and tasks across multiple organizations. The platform ensures strict separation between tenants, layered access control, and adaptable subscription handling.
+---
 
-## 2. User Categories
-- **Platform Administrator**: Oversees the entire system, manages tenant onboarding and lifecycle, configures subscriptions, and monitors overall platform health.
-- **Organization Administrator**: Operates within a single tenant, handling user management, project control, and monitoring resource usage.
-- **Team Member**: Participates in assigned projects, updates task progress, and collaborates with teammates.
+## 1. User Personas
 
-## 3. Functional Requirements (FR)
-1. Ability to create organizations with a unique subdomain.
-2. Platform-level administrators can view and manage all tenants.
-3. Authentication scoped to organization context.
-4. JWT-based authentication with a 24-hour validity period.
-5. Tenant administration including plan changes, status updates, and quota adjustments.
-6. User lifecycle management within tenants, including self-profile updates.
-7. Role hierarchy consisting of platform_admin, org_admin, and team_member.
-8. Enforcement of subscription limits on users and projects.
-9. Project creation and lifecycle control with multiple status states.
-10. Task management with priority and progress tracking.
-11. Assignment and reassignment of tasks among users in the same organization.
-12. Search, filter, and pagination capabilities across key entities.
-13. Analytics dashboard presenting tenant-level insights.
-14. Audit logging for all security-sensitive operations.
-15. Health check endpoint for system monitoring.
-16. Email addresses unique per tenant; platform admins are tenant-independent.
-17. Data isolation implemented via tenant-specific query filters.
-18. Unified JSON-based API response format.
-19. Sample data provided for demonstration and testing.
-20. Fully containerized deployment with automated migrations and seed scripts.
+### 1.1 Super Admin
 
-## 4. Non-Functional Requirements (NFR)
-1. **Security**: Secure authentication, encrypted passwords, RBAC, input validation, and logging.
-2. **Performance**: Average API response time under 300 milliseconds.
-3. **Scalability**: Stateless backend services with indexed database queries.
-4. **Availability**: Health endpoints and quick recovery using container orchestration.
-5. **Usability**: Responsive interface with clear feedback and route protection.
-6. **Maintainability**: Strong typing, clean project structure, and linting support.
+**Role Description:**  
+The Super Admin is a system-level administrator responsible for managing the entire SaaS platform across all tenants. This role has unrestricted access to all tenant data and system configurations.
 
-## 5. Assumptions and Constraints
-- Shared database architecture with tenant-based segregation.
-- Subdomains handled logically during development without DNS enforcement.
-- Email uniqueness enforced within each tenant only.
+**Key Responsibilities:**
+- Monitor overall system health
+- Manage tenant registrations
+- Oversee subscription plans
+- Handle system-wide issues
 
-## 6. Key Success Indicators
-- Tenant onboarding and login completed within two minutes using containers.
-- All defined APIs successfully pass integration testing.
-- Subscription overuse is blocked with proper authorization errors.
-- Tenant data remains fully isolated at all times.
+**Main Goals:**
+- Ensure platform stability and security
+- Maintain high system availability
+- Support tenant onboarding and management
 
-## 7. Exclusions
-- Single sign-on, payment processing, email notifications, file storage, and real-time communication features are excluded.
+**Pain Points:**
+- Identifying issues across multiple tenants
+- Ensuring data isolation integrity
+- Monitoring system usage at scale
+
+---
+
+### 1.2 Tenant Admin
+
+**Role Description:**  
+The Tenant Admin is an organization-level administrator responsible for managing users, projects, and subscription limits within their own tenant.
+
+**Key Responsibilities:**
+- Manage tenant users
+- Create and manage projects
+- Enforce subscription limits
+- Assign roles to users
+
+**Main Goals:**
+- Efficiently manage team and projects
+- Stay within subscription limits
+- Ensure smooth collaboration
+
+**Pain Points:**
+- Managing users under plan constraints
+- Tracking project progress
+- Handling access control
+
+---
+
+### 1.3 End User
+
+**Role Description:**  
+The End User is a regular team member who works on assigned projects and tasks within a tenant.
+
+**Key Responsibilities:**
+- View assigned projects
+- Create and update tasks
+- Track task progress
+
+**Main Goals:**
+- Complete tasks efficiently
+- Collaborate with team members
+- View clear project status
+
+**Pain Points:**
+- Lack of clarity on task ownership
+- Poor UI responsiveness
+- Limited visibility into project progress
+
+---
+
+## 2. Functional Requirements
+
+### Authentication Module
+
+- **FR-001:** The system shall allow users to log in using email and password.
+- **FR-002:** The system shall authenticate users using JWT-based authentication.
+- **FR-003:** The system shall enforce a 24-hour expiration time on JWT tokens.
+
+### Tenant Management Module
+
+- **FR-004:** The system shall allow tenant registration with a unique subdomain.
+- **FR-005:** The system shall assign a default subscription plan to new tenants.
+- **FR-006:** The system shall isolate tenant data using a tenant identifier.
+
+### User Management Module
+
+- **FR-007:** The system shall allow Tenant Admins to create users within their tenant.
+- **FR-008:** The system shall restrict user creation based on subscription plan limits.
+- **FR-009:** The system shall assign roles to users (Tenant Admin or End User).
+
+### Project Management Module
+
+- **FR-010:** The system shall allow Tenant Admins to create projects.
+- **FR-011:** The system shall restrict project creation based on subscription plan limits.
+- **FR-012:** The system shall allow users to view projects within their tenant.
+
+### Task Management Module
+
+- **FR-013:** The system shall allow users to create tasks within a project.
+- **FR-014:** The system shall allow users to update task status.
+- **FR-015:** The system shall allow users to view tasks associated with their projects.
+- **FR-016:** The system shall prevent users from accessing tasks outside their tenant.
+
+---
+
+## 3. Non-Functional Requirements
+
+- **NFR-001 (Performance):** The system shall respond to API requests within 200ms for 90% of requests.
+- **NFR-002 (Security):** The system shall store all passwords using secure hashing algorithms.
+- **NFR-003 (Scalability):** The system shall support a minimum of 100 concurrent users.
+- **NFR-004 (Availability):** The system shall maintain 99% uptime.
+- **NFR-005 (Usability):** The system shall provide a mobile-responsive user interface.

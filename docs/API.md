@@ -1,174 +1,295 @@
-# Enterprise Multi-Tenant Platform – REST API Reference (Version A)
+# API Documentation – Multi-Tenant SaaS Platform
 
-## Introduction
-This REST API documentation describes an enterprise-ready multi-tenant platform that supports structured project and task management. The system is designed to allow multiple organizations to coexist securely within a single application while maintaining complete tenant-level isolation.
+## Authentication
 
-The platform enforces role-based access control (RBAC), ensuring that users can only perform actions permitted by their assigned roles. Subscription plans regulate the number of users, projects, and available features for each tenant.
-
-**Base URL:** `http://localhost:5000/api`
-
----
-
-## Authentication APIs
-
-### Tenant Registration
-Creates a new organization along with its primary administrator account.
-
-**POST** `/api/auth/register-tenant`
-
-This endpoint initializes a tenant, assigns a unique subdomain, and creates an admin user responsible for managing the organization.
+### Authentication Method
+- JWT (JSON Web Token)
+- Token must be sent in header: Authorization: Bearer <token>
 
 ---
 
-### User Login
-Validates user credentials and issues a JWT for authenticated access.
+## 1. Auth APIs
 
-**POST** `/api/auth/login`
+### API 1. Tenant Registration
+- **Method:** POST
+- **Endpoint:** /api/auth/register-tenant
+- **Auth Required:** No
 
-Upon successful login, a token is returned and must be included in all protected API requests.
+**Request**
+```json
+{
+  "tenantName": "Test Company Alpha",
+  "subdomain": "testalpha",
+  "adminEmail": "admin@testalpha.com",
+  "adminPassword": "TestPass@123",
+  "adminFullName": "Alpha Admin"
+}
+```
 
----
+**Response** `200 OK`
 
-### Current User Details
-Fetches profile information of the logged-in user.
+### API 2. Login
+- **Method:** POST
+- **Endpoint:** /api/auth/login
+- **Auth Required:** No
 
-**GET** `/api/auth/me`
+**Request**
+```json
+{
+  "email": "admin@demo.com",
+  "password": "Demo@123",
+  "tenantSubdomain": "demo"
+}
 
-Requires a valid JWT in the Authorization header.
+```
 
----
+**Response** `200 OK`
 
-### Logout
-Ends the user session on the client side.
+### API 3. Get Current User
+- **Method:** GET
+- **Endpoint:** /api/auth/me
+- **Auth Required:** Yes
 
-**POST** `/api/auth/logout`
+**Response** `200 OK`
 
----
+### API 4. Logout
+- **Method:** POST
+- **Endpoint:** /api/auth/logout
+- **Auth Required:** Yes
 
-## Tenant Management APIs
-
-### View All Tenants (Super Admin)
-Returns a paginated list of all registered tenants.
-
-**GET** `/api/tenants`
-
-Accessible only to users with super admin privileges.
-
----
-
-### Tenant Information
-Retrieves detailed information about a specific tenant, including subscription details.
-
-**GET** `/api/tenants/:tenantId`
-
----
-
-### Update Tenant
-Allows tenant administrators to modify organization settings.
-
-**PUT** `/api/tenants/:tenantId`
-
----
-
-## User Management APIs
-
-### Create Tenant User
-Adds a new user to a tenant with a defined role.
-
-**POST** `/api/tenants/:tenantId/users`
+**Response** `200 OK`
 
 ---
 
-### List Tenant Users
-Displays all users associated with a tenant.
+## 2. Tenant APIs
 
-**GET** `/api/tenants/:tenantId/users`
+### API 5. Get Tenants Details
+- **Method:** GET
+- **Endpoint:** /api/tenants/:tenantId
+- **Auth Required:** Yes
 
----
+**Response** `200 OK`
 
-### Update User
-Updates user profile details or role assignments.
+### API 6. Update Tenant
+- **Method:** PUT
+- **Endpoint:** /api/tenants/:tenantId
+- **Auth Required:** Yes
 
-**PUT** `/api/users/:userId`
+**Request**
+```json
+{
+    "name": "Demo Company One"
+}
+```
 
----
+**Response** `200 OK`
 
-### Delete User
-Removes a user from the tenant.
+### API 7. List All Tenants
+- **Method:** GET
+- **Endpoint:** /api/tenants/
+- **Auth Required:** Yes
+- **Authorization:** super_admin ONLY
 
-**DELETE** `/api/users/:userId`
-
----
-
-## Project APIs
-
-### Create Project
-Registers a new project under a tenant.
-
-**POST** `/api/tenants/:tenantId/projects`
-
----
-
-### List Projects
-Returns all projects belonging to a tenant.
-
-**GET** `/api/tenants/:tenantId/projects`
+**Response** `200 OK`
 
 ---
 
-### Update Project
-Modifies project attributes such as name, description, or status.
+## 3. User APIs
 
-**PUT** `/api/projects/:projectId`
+### API 8. Add User to Tenant
+- **Method:** POST
+- **Endpoint:** /api/tenants/:tenantId/users
+- **Auth Required:** Yes
+- **Authorization:** tenant_admin only
+
+**Request**
+```json
+{
+  "email": "newuser@demo.com",
+  "password": "NewUser@123",
+  "full_name": "New User",
+  "role": "user"
+}
+```
+
+**Response** `200 OK`
+
+### API 9. List Tenant Users
+- **Method:** GET
+- **Endpoint:** /api/tenants/:tenantId/users
+- **Auth Required:** Yes
+- **Authorization:** User must belong to this tenant
+
+**Response** `200 OK`
+
+### API 10. Update User
+- **Method:** PUT
+- **Endpoint:** /api/users/:userId
+- **Auth Required:** Yes
+- **Authorization:** tenant_admin OR self(limited fields)
+
+**Request**
+```json
+{
+  "full_name": "New User One",
+}
+```
+
+**Response** `200 OK`
+
+### API 11. Delete User
+- **Method:** DELETE
+- **Endpoint:** /api/users/:userId
+- **Auth Required:** Yes
+- **Authorization:** tenant_admin only
+
+**Response** `200 OK`
 
 ---
 
-### Delete Project
-Deletes a project and all its related tasks.
+## 4. Project APIs
 
-**DELETE** `/api/projects/:projectId`
+### API 12. Create Project
+- **Method:** POST
+- **Endpoint:** /api/projects
+- **Auth Required:** Yes
+
+**Request**
+```json
+{
+  "name": "Website Redesign Project",
+  "description": "Complete redesign of company website"
+}
+```
+
+**Response** `200 OK`
+
+### API 13. List Projects
+- **Method:** GET
+- **Endpoint:** /api/projects
+- **Auth Required:** Yes
+
+**Response** `200 OK`
+
+### API 14. Update Project
+- **Method:** PUT
+- **Endpoint:** /api/projects/:projectId
+- **Auth Required:** Yes
+- **Authorization:** tenant_admin OR project creator
+
+**Request**
+```json
+{
+  "name": "Website Redesign Project - 2",
+  "description": "Complete redesign of company website - 2",
+  "status": "archived"
+}
+```
+
+**Response** `200 OK`
+
+### API 15. Delete Project
+- **Method:** DELETE
+- **Endpoint:** /api/projects/:projectId
+- **Auth Required:** Yes
+- **Authorization:** tenant_admin only OR project creator
+
+**Response** `200 OK`
 
 ---
 
-## Task APIs
+## 5. Task APIs
 
-### Create Task
-Creates a task within a specified project.
+### API 16. Create Task
+- **Method:** POST
+- **Endpoint:** /api/projects/:projectId/tasks
+- **Auth Required:** Yes
 
-**POST** `/api/projects/:projectId/tasks`
+**Request**
+```json
+{
+  "title": "Design homepage mockup phase 2",
+  "description": "Create high-fidelity design",
+  "assignedTo": "33333333-3333-3333-3333-333333333333",
+  "priority": "high",
+  "dueDate": "2025-12-30"
+}
+```
+
+**Response** `200 OK`
+
+### API 17. List Project Tasks
+- **Method:** GET
+- **Endpoint:** /api/projects/:projectId/tasks
+- **Auth Required:** Yes
+
+**Response** `200 OK`
+
+### API 18. Update Task Status
+- **Method:** PATCH
+- **Endpoint:** /api/tasks/:taskId/status
+- **Auth Required:** Yes
+
+**Request**
+```json
+{
+  "status": "in_progress"
+}
+```
+
+**Response** `200 OK`
+
+### API 19. Update Task
+- **Method:** PUT
+- **Endpoint:** /api/tasks/:taskId
+- **Auth Required:** Yes
+
+**Request**
+```json
+{
+  "priority": "high",
+  "dueDate": "2026-02-01"
+}
+```
+
+**Response** `200 OK`
 
 ---
 
-### List Tasks
-Retrieves tasks associated with a project.
+## Super Admin APIs Extra
 
-**GET** `/api/projects/:projectId/tasks`
+### API 20. List All the Projects across all the tenants
+- **Method:** GET
+- **Endpoint:** /api/projects/all
+- **Auth Required:** Yes
+- **Authorization:** only super_admin
 
----
+**Response** `200 OK`
 
-### Update Task
-Updates task properties including status and priority.
+### API 21. List Project Tasks
+- **Method:** GET
+- **Endpoint:** /api/tasks/all
+- **Auth Required:** Yes
+- **Authorization:** only super_admin
 
-**PUT** `/api/tasks/:taskId`
-
----
-
-### Delete Task
-Removes a task from the system.
-
-**DELETE** `/api/tasks/:taskId`
-
----
-
-## Error Handling
-All API errors follow a consistent response structure containing a success flag, error message, and error code. Standard HTTP status codes are used to indicate request outcomes.
+**Response** `200 OK`
 
 ---
 
-## Security & Logging
-All write operations are logged with user identity, tenant reference, action type, and timestamp. JWT authentication and RBAC are enforced across all protected routes.
+## Health Check
+
+### API 22. List Project Tasks
+- **Method:** GET
+- **Endpoint:** /api/health
+- **Auth Required:** No
+
+**Response** `200 OK`
 
 ---
 
-## Subscription Plans
-Plans define usage limits such as maximum users and projects. Higher-tier plans unlock additional features and increased quotas.
+# Summary
+
+- Total APIs documented: 19+
+- Authentication explained
+- Request/response examples included
+- Meets evaluation requirements

@@ -1,69 +1,182 @@
-# Platform Technical Architecture – Version A
+# Technical Specification
+## Multi-Tenant SaaS Platform – Project & Task Management System
 
-## Technology Overview
-- **Backend Stack:** Node.js 18, Express.js, TypeScript, Prisma ORM, Zod for validation, JWT-based authentication, bcryptjs for password hashing.
-- **Frontend Stack:** React 18, Vite for bundling, React Router for navigation, fetch API for backend communication.
-- **Database Layer:** PostgreSQL version 15.
-- **Containerization & Orchestration:** Docker with Docker Compose.
+---
 
-## Project Directory Layout
-- **backend/**
-  - `src/index.ts` – Entry point for Express server
-  - `src/controllers/*.ts` – Business logic for auth, tenants, users, projects, and tasks
-  - `src/middleware/auth.ts` – JWT validation and RBAC logic
-  - `src/routes/*.ts` – API route definitions
-  - `src/utils/jwt.ts`, `src/utils/audit.ts` – Utility helpers
-  - `src/prisma.ts` – Prisma client configuration
-  - `prisma/schema.prisma`, `prisma/seed.js` – Database schema and seed data
-- **frontend/**
-  - `src/main.jsx`, `src/App.jsx` – Application bootstrap and routing
-  - `src/context/AuthContext.jsx` – Authentication state handling
-  - `src/components/ProtectedRoute.jsx` – Route-level access control
-  - `src/services/api.js` – API communication layer
-  - `src/pages/*.jsx` – UI screens (login, dashboard, projects, tasks, users)
-- **docs/** – Technical and product documentation
-- `docker-compose.yml` – Multi-service container configuration
-- `integration-test.js` – Automated API verification script
+## 1. Project Structure
 
-## Environment Configuration
+This project follows a clear separation of concerns between backend, frontend, documentation, and infrastructure configuration.
 
-### Backend (.env)
-- `DATABASE_URL=postgresql://postgres:postgres@database:5432/saas_db`
-- `JWT_SECRET=<secure-random-string>`
-- `JWT_EXPIRES_IN=24h`
-- `PORT=5000`
-- `FRONTEND_URL=http://frontend:3000`
+### Root Directory Structure
 
-### Frontend
-- `VITE_API_URL=http://backend:5000/api`
+```
+project-root/
+├── backend/
+├── frontend/
+├── docs/
+├── docker-compose.yml
+└── README.md
+└── submission.json
+```
 
-## Development Setup (Without Containers)
-1. Start PostgreSQL locally on port 5432.
-2. Backend setup:
-   - Install dependencies
-   - Apply migrations and seed data
-   - Run development server
-3. Frontend setup:
-   - Install packages
-   - Start Vite development server
+---
 
-## Container-Based Execution
-1. Start services using Docker Compose.
-2. Confirm backend health and frontend availability.
-3. Stop containers when required, optionally removing volumes.
+### Backend Structure
 
-## Testing Strategy
-- End-to-end testing using `integration-test.js`.
-- Backend unit tests executed via npm.
+```
+backend/
+├── src/
+│ ├── controllers/
+│ ├── routes/
+│ ├── models/
+│ ├── middleware/
+│ ├── services/
+│ ├── utils/
+│ ├── config/
+│ ├── scripts/
+│ ├── app.js
+│ └── server.js
+├── migrations/
+└── .env
+├── Dockerfile
+└── package.json
+```
 
-## API Design Notes
-- Auth endpoints handle tenant registration, login, profile retrieval, and logout.
-- RBAC and tenant scoping enforced through middleware.
-- Super admin accounts operate without tenant restriction.
-- Standardized JSON response format is used throughout.
+**Folder Descriptions:**
 
-## Deployment Guidelines
-- Secure secrets and environment variables.
-- Enable HTTPS and restrictive CORS policies.
-- Apply database migrations during deployment.
-- Build frontend assets for production use.
+- **controllers/**  
+  Handles incoming HTTP requests and returns responses.
+
+- **routes/**  
+  Defines API endpoints and maps them to controllers.
+
+- **models/**  
+  Contains database models and schema definitions.
+
+- **middleware/**  
+  Includes authentication, authorization, and tenant isolation middleware.
+
+- **services/**  
+  Contains business logic separated from controllers.
+
+- **utils/**  
+  Helper functions and shared utilities.
+
+- **config/**  
+  Environment configuration and database connection setup.
+
+- **migrations/**  
+  Database migration and seed files.
+
+- **tests/**  
+  Unit and integration tests for backend APIs.
+
+---
+
+### Frontend Structure
+
+```
+frontend/
+├── src/
+│ ├── components/
+│ ├── pages/
+│ ├── api/
+│ ├── auth/
+│ ├── utils/
+│ ├── App.jsx
+│ └── main.jsx
+│ └── styles.css
+├── .env
+├── Dockerfile
+└── package.json
+└── vite.config.js
+```
+
+**Folder Descriptions:**
+
+- **components/**  
+  Reusable UI components.
+
+- **pages/**  
+  Page-level components such as Login, Dashboard, Projects, and Users.
+
+- **routes/**  
+  Route definitions and protected route handling.
+
+- **services/**  
+  API service functions for communicating with the backend.
+
+- **context/**  
+  Global state management (authentication, user session).
+
+- **hooks/**  
+  Custom React hooks.
+
+- **styles/**  
+  Global and component-specific styling.
+
+---
+
+## 2. Development Setup Guide
+
+### 2.1 Prerequisites
+
+Ensure the following tools are installed:
+
+- Node.js v18 or higher
+- Docker
+- Docker Compose
+- Git
+
+---
+
+### 2.2 Environment Variables
+
+All environment variables are defined using a `.env` file or directly inside `docker-compose.yml`.
+
+**Backend Environment Variables:**
+
+```
+NODE_ENV=development
+PORT=5000
+DATABASE_URL=postgres://postgres:postgres@database:5432/saas_db
+JWT_SECRET=supersecretjwtkey
+JWT_EXPIRES_IN=24h
+```
+
+**Frontend Environment Variables:**
+
+```
+VITE_API_URL=http://localhost:5000/api
+```
+
+---
+
+### 2.3 Installation Steps
+
+1. Clone the repository:
+```bash
+git clone https://github.com/SRINIJA-PULLIPUDI/Multi-Tenant-SaaS-Platform-with-Project-and-Task-Management-System.git
+```
+
+2. Navigate to the project root:
+```bash
+cd Multi-Tenant-SaaS-Platform-with-Project-and-Task-Management-System
+```
+
+3. Build and start all services using Docker:
+```bash
+docker-compose up -d
+```
+
+---
+
+### 2.4 Running the Application Locally
+
+Once Docker containers are running:
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
+- Health Check Endpoint: http://localhost:5000/api/health
+
+Database migrations and seed data are automatically executed on container startup.
