@@ -86,7 +86,7 @@ The system follows a three-tier architecture:
 
 ```bash
 git clone https://github.com/navya1129/multi-tenant-saas.git
-cd Multi-Tenant-SaaS-Platform
+cd multi-tenant-saas
 docker-compose up -d
 ```
 
